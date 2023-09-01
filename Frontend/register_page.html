@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" type = "text/css" href="styles.css">
+    <title>Register Account</title>
+    <h1 style="padding-left: 45%;"> Gym Diary </h1>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script> 
+    <script src=functions.js></script>
+    <script type="text/javascript">
+
+        $(document).ready(function() {
+            $('form').on('submit', function(event) {
+                // Prevent page reload on return
+                event.preventDefault();
+                
+                // Raise error if any fields are empty
+                if (isEmpty($('#username').val())     ||
+                    isEmpty($('#password').val())     ||
+                    isEmpty($('#confpassword').val()) ||
+                    isEmpty($('#forename').val())     ||
+                    isEmpty($('#surname').val())) {
+
+                    $(".error").text("Please ensure all fields are filled.");
+                    return null;
+                }
+                
+                // Raise error if the confirmed password doesn't match
+                if (!passwordsEqual($('#password').val(), $('#confpassword').val())) {
+                    $(".error").text("Passwords do not match, please try again");
+                    return null;
+                }
+                
+                // Send POST request to add user
+                var request = $.ajax({
+                    data: {
+                        username: $('#username').val(),
+                        password: $('#password').val(),
+                        forename: $('#forename').val(), 
+                        surname: $('#surname').val() 
+                    },
+                    type : 'POST',
+                    url : 'http://ysjcs.net:5004/register',
+                    error : function(response) {
+                        $(".error").text("Account already exists, try a different username.");
+                    },
+                    success : function(response) {
+                        alert("Account Registration Successful");
+                        window.location.href = "index.html";
+                    }
+                });
+            });
+        });    
+
+        function passwordsEqual(pass, confirmedPass) {
+            return pass === confirmedPass;
+        }
+    </script>
+</head>
+<body>
+    <main>
+        <div class="row" id="loginPage">
+            <div class="colm-logo">
+                <img src="arm_spreadsheet.png" alt="Logo">
+                <h2></h2>
+            </div>
+            <div class="colm-form">
+                <p class="error" style="color: red"></p>
+                <form class='form-container'>
+                    <h2>Register an account</h2>
+                    <input type="text" placeholder="Username", id=username>
+                    <input type="password" placeholder="Password" id=password>
+                    <input type="password" placeholder="Confirm Password" id=confpassword>
+                    <input type="text" placeholder="Forename" id=forename>
+                    <input type="text" placeholder="Surname" id=surname>
+                    <button type="submit" class="btn-login" action="submit">Register Account</button>
+                    <button class="btn-new" onclick="window.location.href='index.html'">Back to Login Page</button>
+                </form> 
+            </div>
+            
+        </div>
+    </main>
+</body>
+</html>

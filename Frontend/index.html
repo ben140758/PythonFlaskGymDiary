@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<!-- Adapted from https://codepen.io/amit0009/pen/ZEaygxa -->
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" type = "text/css" href="styles.css">
+    <h1 style="padding-left: 45%;"> Gym Diary </h1>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+    <script>
+
+        function login_onclick() {
+            var creds = $('#username').val() + ':' + $('#password').val();
+            var encoded_creds = btoa(unescape(encodeURI(creds))); 
+            var request = $.ajax( {
+                type: 'POST',
+                url: "http://ysjcs.net:5004/login",
+                async: true,
+                dataType: "text",
+                headers: { "Authorization": "Basic " + encoded_creds},
+                success: function(responsetext) { 
+                    returned_tokens = JSON.parse(responsetext);
+                    $("#ip").text(returned_tokens.user_token);
+                    localStorage.USER_TOKEN = returned_tokens.user_token;
+                    localStorage.ADMIN_TOKEN = returned_tokens.admin_token;
+                    localStorage.USERNAME = $('#username').val();
+                    window.location.href = "account_info.html";
+                },
+                error: function(response) {
+                    var responseText = response.responseText;
+                    var responseCode = response.status;
+                    console.log(response);
+                    if (response.status == 0) {
+                        $(".error").text("Connection to server failed, try again later");
+                    } else {
+                        $(".error").text("Username or Password does not match, try again.");
+                    }
+                }
+            });
+        }
+        
+    </script>
+</head>
+<body>
+    <main>
+        <div class="row" id="loginPage">
+            <div class="colm-logo">
+                <img src="arm_spreadsheet.png" alt="Logo">
+            </div>
+            <div class="colm-form">
+                <p class="error" style="color: red"></p>
+                <div class="form-container">
+                    <input type="text" placeholder="Username", id=username>
+                    <input type="password" placeholder="Password" id=password>
+                    <button type="button" class="btn-login" onclick="login_onclick()">Login</button>
+                    <button class="btn-new" onclick="window.location.href='register_page.html'">Create new Account</button>
+                </div>
+            </div>
+        </div>
+    </main>
+</body>
+</html>

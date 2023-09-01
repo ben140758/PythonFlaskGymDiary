@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" type = "text/css" href="styles.css">
+    <h1 style="padding-left: 45%;"> Gym Diary </h1>
+    <!-- Taken from https://www.w3schools.com/html/tryit.asp?filename=tryhtml_table_intro -->
+    <style>
+        table {
+          font-family: arial, sans-serif;
+          border-collapse: collapse;
+          width: 100%;
+        }
+
+        td {
+          border: 1px solid #dddddd;
+          text-align: left;
+          padding: 8px;
+        }
+
+        th {
+          border: 1px solid #dddddd;
+          text-align: center;
+          padding: 8px;
+        }
+
+        tr:nth-child(even) {
+          background-color: #dddddd;
+        }
+        
+        /* Adapted from https://www.w3schools.com/css/tryit.asp?filename=trycss_navbar_horizontal_black_right */
+        ul {
+          list-style-type: none;
+          margin: 0;
+          padding: 0;
+          overflow: hidden;
+          background-color: #333;
+        }
+
+        li {
+          float: left;
+        }
+
+        li a {
+          display: block;
+          color: white;
+          text-align: center;
+          padding: 14px 16px;
+          text-decoration: none;
+        }
+
+        li a:hover:not(.active) {
+          background-color: #111;
+        }
+
+        .active {
+          background-color: #04AA6D;
+        }
+    </style>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js">
+    </script>
+    <script src="functions.js"></script>
+    <script>
+    $(document).ready(function() {
+
+        // Validate user token
+        console.log('User Token: ' + localStorage.USER_TOKEN);
+        checkUserToken(localStorage.USER_TOKEN);
+        checkAdminToken(localStorage.ADMIN_TOKEN);
+        
+        // Get username and name from database
+        $.ajax({
+            type: 'GET',
+            url: `http://ysjcs.net:5004/get_user?token=${localStorage.USER_TOKEN}&username=${localStorage.USERNAME}`,
+            async: true,
+            success: function(data) {
+                // Set the retrieved data to the respective table fields
+                console.log(localStorage.USERNAME);
+                $('#user').text(data.username);
+                $('#name').text(data.forename + ' ' + data.surname);
+            }
+        });
+            
+        $.ajax({
+            type: 'GET',
+            url: `http://ysjcs.net:5004/get_entry_count?token=${localStorage.USER_TOKEN}&username=${localStorage.USERNAME}`,
+            async: true,
+            success: function(data) {
+                // Set the retrieved data to the respective table fields
+                $('#diary_count').text(data.diary_entry_count);
+            }
+        });
+        
+        
+        // Post membership to database
+        $("#memberShipForm").on('submit', function() {
+            // Prevent page reload on return
+            event.preventDefault();
+            
+            // Check if input is empty
+            if (isEmpty($('#userPostcode').val())) {
+                $("#membershipError").text("Please enter a gym postcode to register with.");
+                return null;
+            } else {
+                $("#membershipError").text("");
+            }
+
+            var request = $.ajax({
+                type: 'POST',
+                url: `http://ysjcs.net:5004/register_membership?token=${localStorage.USER_TOKEN}`,
+                async: true,
+                data: {postcode: $('#userPostcode').val(), 
+                       username: localStorage.USERNAME},
+                success: function() {
+                    $(".error").empty();
+                    $(".success").text("Registration Successful");
+                },
+                error: function(response) {
+                    $(".success").empty();
+                    $("#membershipError").text(response.responseJSON.response);
+                    
+                }
+            });
+            
+            
+            console.log($('#userPostcode').val());
+        });
+        
+        
+        function onAdminNavClick() {
+            return null;
+        }
+        
+    });
+    </script>
+</head>
+    
+    
+<body>
+    <ul id='navigation'>
+      <li><a href="account_info.html">Account</a></li>
+      <li><a href="diary_page.html">Diary</a></li>
+      
+      <li style="float:right"><a class="active" id='logoutButton'>Logout</a></li>
+    </ul>
+    <main>
+        <div class="row">
+            <div class="colm-form">
+                <p class="error" style="color: red"></p>
+                <div class="form-container" style="flex: 0 0 0 !important;">
+                    <b>Account Info</b><br>
+                    <table>
+                        <tr>
+                            <th>Username</th>
+                            <th>Full Name</th>
+                            <th>Total Diary Entries</th>
+                        </tr>
+                        <tr>
+                            <td id='user'></td>
+                            <td id='name'></td>
+                            <td id='diary_count'></td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+            
+            <div class="colm-form">
+                <p class="error" id='membershipError' style="color: red"></p>
+                <p class="success" style="color: green"></p>
+                <div class="form-container" style="flex: 0 0 0 !important; max-width: none">
+                    <b>Register a membership</b><br>
+                    <form id='memberShipForm'>
+                        <input type="text" placeholder="Gym Postcode", id='userPostcode'>
+                        <button type="submit" class="btn-login" action="submit">Register Membership</button>
+                    </form>
+                </div>
+            </div>
+            
+        </div>
+    </main>
+</body>
+</html>

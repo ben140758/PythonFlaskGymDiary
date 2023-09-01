@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" type = "text/css" href="styles.css">
+    <h1 style="padding-left: 45%;"> Gym Diary </h1>
+    <!-- Taken from https://www.w3schools.com/html/tryit.asp?filename=tryhtml_table_intro -->
+    <style>
+        table {
+          font-family: arial, sans-serif;
+          border-collapse: collapse;
+          width: 100%;
+        }
+
+        td {
+          border: 1px solid #dddddd;
+          text-align: left;
+          padding: 8px;
+        }
+
+        th {
+          border: 1px solid #dddddd;
+          text-align: center;
+          padding: 8px;
+        }
+
+        tr:nth-child(even) {
+          background-color: #dddddd;
+        }
+        
+        /* Adapted from https://www.w3schools.com/css/tryit.asp?filename=trycss_navbar_horizontal_black_right */
+        ul {
+          list-style-type: none;
+          margin: 0;
+          padding: 0;
+          overflow: hidden;
+          background-color: #333;
+        }
+
+        li {
+          float: left;
+        }
+
+        li a {
+          display: block;
+          color: white;
+          text-align: center;
+          padding: 14px 16px;
+          text-decoration: none;
+        }
+
+        li a:hover:not(.active) {
+          background-color: #111;
+        }
+
+        .active {
+          background-color: #04AA6D;
+        }
+    </style>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+    <script src="functions.js"></script>
+    <script>
+    $(document).ready(function() {
+        // Hide neccessary widgets
+        $("#workoutSelect").hide();
+        $("#getDiaryEntries-btn").hide();
+        $("#diaryEntryTable").hide();
+        
+        // Validate user token
+        checkUserToken(localStorage.USER_TOKEN);
+        checkAdminToken(localStorage.ADMIN_TOKEN);        
+        
+        function onAdminNavClick() {
+            return null;
+        }
+        
+        // Get user Gym memberships
+        $.ajax({
+            type: 'GET',
+            url: `http://ysjcs.net:5004/get_memberships?token=${localStorage.USER_TOKEN}&username=${localStorage.USERNAME}`,
+            async: true,
+            success: function(records) {
+                $(".row").attr('style', 'top: 40vh');
+                if (records.length == 0) {
+                    $("#membership").append(`<option>No Memberships found, please register a membership</option>`);
+                    $("#workoutSelect").hide();
+                    return null;
+                }
+                console.log("goin here");
+                $(records).each(function(index){                
+                    // Add memberships to select
+                    //https://stackoverflow.com/questions/10659097/jquery-get-selected-option-from-dropdown?page=1&tab=scoredesc#tab-top
+                    //console.log(records[index].postcode);
+                    $("#membership").append(`<option value="${records[index].postcode}">${records[index].gym_name} - ${records[index].gym_city} - ${records[index].postcode} </option>`);
+                });
+            }
+        });
+        
+        
+        // Get workouts and put them in select
+        $("#getWorkouts-btn").on('click', function() {
+            var gym_membership = $("#membership").find(":selected").val();
+            $(".row").attr('style', 'top: 66vh');
+            $.ajax({
+                type: 'GET',
+                url: `http://ysjcs.net:5004/get_workout_dates?token=${localStorage.USER_TOKEN}&username=${localStorage.USERNAME}&gym_membership=${gym_membership}`,
+                async: true,
+                success: function(data) {
+                    $("#workoutSelect").empty();
+                    console.log(data);
+                    if (data.length == 0) {
+                        
+                        $("#errorOne").text(`No Workouts Found`);
+                        $("#getDiaryEntries-btn").hide();
+                        return null;
+                    }
+                    $("#errorOne").text("");
+                    $("#getDiaryEntries-btn").show();
+                    $("#workoutSelect").show();
+                    $(data).each(function(index){
+                        DateFormat = new Date(data[index].workout_date).toISOString();
+                        $("#workoutSelect").append(`<option value=${DateFormat}>${new Date(DateFormat).toDateString()}</option>`);
+                    });
+                }
+            });
+        });
+        
+        // Get diary entry records associated with selected workout date     
+        $("#getDiaryEntries-btn").on('click', function() {
+            var gym_membership = $("#membership").find(":selected").val();
+            var workout_date = $("#workoutSelect").find(":selected").val();
+            var ISOFormatDate = new Date(workout_date).toISOString();
+            $("#diaryEntryTable").show();
+            $("#appendableRows").append(`<b>${gym_membership}<b>`);
+            $.ajax({
+                type: 'GET',
+                url: `http://ysjcs.net:5004/get_diary_entries?token=${localStorage.USER_TOKEN}&username=${localStorage.USERNAME}&gym_membership=${gym_membership}&workout_date=${ISOFormatDate}`,
+                async: true,
+                success: function(data) {
+                    console.log(data);
+                    $("#diaryEntryTable").empty();
+                    $("#diaryEntryTable").show();
+                    $("#diaryEntryTable").append(`
+                        <tr>
+                            <th>Exercise</th>
+                            <th>Set Number</th>
+                            <th>Weight (KG)</th>
+                            <th>Repetitions</th>
+                        </tr>`);
+                    
+                    $(data).each(function(index){
+                        $("#diaryEntryTable").append(`
+                                                        <tr>
+                                                            <td>${data[index].exercise}</td>
+                                                            <td>${data[index].set_number}</td>
+                                                            <td>${data[index]['weight_lifted-kg']}</td>
+                                                            <td>${data[index].repetitions}</td>
+                                                        </tr>
+                                                     `);
+                    });
+                    $(".row").attr('style', `top: ${66}vh`);
+                }
+            });
+        });
+    });
+    </script>
+</head>
+
+
+
+
+
+
+<body>
+    <ul id='navigation'>
+          <li><a href="account_info.html">Account</a></li>
+          <li><a href="diary_page.html">Diary</a></li>
+          
+          <li style="float:right"><a class="active" id='logoutButton'>Logout</a></li>
+    </ul>
+    <ul id='navigation'>
+          <li><a href="diary_page.html">View</a></li>
+          <li><a href="diary_page_add_workouts.html">Add</a></li>
+          <li><a href="diary_page_update_account.html">Update</a></li>
+          <li><a href="diary_page_delete_membership.html">Delete</a></li>
+    </ul>
+    <div class="row">
+            <div class="colm-form" id="diaryEntrySelector">
+                <p class="error" id="errorOne" style="color: red"></p>
+                <div class="form-container" id="diary1" style="flex: 0 0 0 !important;">
+                    <h2>Show diary entries</h2>
+                    <select class="classic" id='membership'>
+                    </select>
+                    <br>
+                    <button class="btn-login" id='getWorkouts-btn'>Show Workout Dates</button>
+                    <select class="classic" id='workoutSelect' hidden='hidden'>
+                    </select>
+                    <button class="btn-login" id='getDiaryEntries-btn'>Show Diary Entries</button>
+                </div>
+            </div>
+        
+    
+    
+            <div class="colm-form">
+                <p class="error" style="color: red"></p>
+                <div class="form-container" style="flex: 0 100 0 !important;">
+                    <b>Diary Entries</b><br>
+                    <table id="diaryEntryTable">
+                    </table>
+                </div>
+            </div>
+        </div>
+</body>
+</html>

@@ -1,0 +1,139 @@
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" type = "text/css" href="styles.css">
+    <h1 style="padding-left: 45%;"> Gym Diary </h1>
+    <!-- Taken from https://www.w3schools.com/html/tryit.asp?filename=tryhtml_table_intro -->
+    <style>
+        /* Adapted from https://www.w3schools.com/css/tryit.asp?filename=trycss_navbar_horizontal_black_right */
+        ul {
+          list-style-type: none;
+          margin: 0;
+          padding: 0;
+          overflow: hidden;
+          background-color: #333;
+        }
+
+        li {
+          float: left;
+        }
+
+        li a {
+          display: block;
+          color: white;
+          text-align: center;
+          padding: 14px 16px;
+          text-decoration: none;
+        }
+
+        li a:hover:not(.active) {
+          background-color: #111;
+        }
+
+        .active {
+          background-color: #04AA6D;
+        }
+    </style>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js">
+    </script>
+    <script src="functions.js"></script>
+    <script>
+        
+        $(document).ready(function() {
+
+            // Validate user token
+            checkUserToken(localStorage.USER_TOKEN);
+            checkAdminToken(localStorage.ADMIN_TOKEN);
+			$('b').hide();
+
+            // Get user diary entries
+            $.ajax({
+                type: 'GET',
+                url: `http://ysjcs.net:5004/get_all_user_diary_entries?token=${localStorage.USER_TOKEN}&username=${localStorage.USERNAME}`,
+                async: true,
+                success: function(records) {
+                    if (records.length == 0) {
+                        return null;
+                    }
+                    $(records).each(function(index){                
+                        // Add memberships to select
+                        //https://stackoverflow.com/questions/10659097/jquery-get-selected-option-from-dropdown?page=1&tab=scoredesc#tab-top
+                        $("#diaryEntrySelect").append(`<option id="option${index}"value="${records[index].ID}">${records[index].gym_name} - ${records[index].gym_city} - ${records[index].postcode} - ${new Date(records[index].workout_date).toDateString()} - ${records[index].exercise} - set number: ${records[index].set_number} - weight lifted (kg): ${records[index].weight_lifted} - repetitions: ${records[index].repetitions}</option>`);
+                    });
+                }
+            });
+
+            $('#deleteSubmit').on('click', function() {
+                console.log("Clicked!");
+                var selectedEntries = [];
+                $("#diaryEntrySelect > option:selected").each(function(index) {
+                    selectedEntries[index] = {"entry_ID" : parseInt($(this).val())};
+                });
+                console.log(selectedEntries);
+                
+                if (selectedEntries.length == 0) {
+                    $(".success").hide();
+                    $(".error").show();
+                    $(".error").text("No selected entries, select one and try again")
+                    return null;
+                }
+				$.ajax({
+					type: 'POST',
+					url: `http://ysjcs.net:5004/delete_diary_entries?token=${localStorage.USER_TOKEN}`,
+					async: true,
+					data: { diary_entries : JSON.stringify(selectedEntries) },
+					success: function() {
+						$(".success").text("Deletion Successful");
+						$(".error").hide();
+						// Remove workout from select
+                        $("#diaryEntrySelect > option:selected").each(function(index) {
+                            $(this).remove();
+                        });
+						//$("#diaryEntrySelect").find(":selected").remove();
+					},
+					error: function(error) {
+						$(".error").text(error.responseText);
+						$(".success").hide();
+					}
+				});
+            });
+        });
+    </script>
+</head>
+    
+<body>
+    <ul id='navigation'>
+      <li><a href="account_info.html">Account</a></li>
+      <li><a href="diary_page.html">Diary</a></li>
+      
+      <li style="float:right"><a class="active" id='logoutButton'>Logout</a></li>
+    </ul>
+    <ul id='navigation'>
+          <li><a href="diary_page.html">View</a></li>
+          <li><a href="diary_page_add_workouts.html">Add</a></li>
+          <li><a href="diary_page_update_account.html">Update</a></li>
+          <li><a href="diary_page_delete_membership.html">Delete</a></li>
+    </ul>
+    <ul id='navigation'>
+          <li><a href="diary_page_delete_membership.html">Memberships</a></li>
+          <li><a href="diary_page_delete_workouts.html">Workouts</a></li>
+          <li><a href='diary_page_delete_diary_entries.html'>Diary Entries</a></li>
+    </ul>
+    
+    <div class="row" id='diaryDelete' style="top: 450px !important;">
+		<div class="colm-form" id="diaryEntrySelector" style="height: 100%;">
+			<p class="error" style="color: red"></p>
+			<p class="success" style="color: green"></p>
+			<div class="form-container" id="diary1" style="height: 100%; flex: 0 0 0 !important;">
+				<h2>Delete diary entries</h2><br><br>
+				<select id='diaryEntrySelect' style="height: 300px;" multiple>
+					
+				</select>
+				<button type=submit id='deleteSubmit' class='btn-login'>Delete selected workout</button>
+			</div>
+		</div>
+    </div>
+</body>
+</html>

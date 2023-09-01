@@ -1,0 +1,256 @@
+<html>
+    <head>
+        <meta charset="UTF-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link rel="stylesheet" type = "text/css" href="styles.css">
+        <h1 style="padding-left: 45%;"> Gym Diary </h1>
+        <!-- Taken from https://www.w3schools.com/html/tryit.asp?filename=tryhtml_table_intro -->
+        <style>
+            table {
+              font-family: arial, sans-serif;
+              border-collapse: collapse;
+              width: 100%;
+            }
+
+            td {
+              border: 1px solid #dddddd;
+              text-align: left;
+              padding: 8px;
+            }
+
+            th {
+              border: 1px solid #dddddd;
+              text-align: center;
+              padding: 8px;
+            }
+
+            tr:nth-child(even) {
+              background-color: #dddddd;
+            }
+
+            /* Adapted from https://www.w3schools.com/css/tryit.asp?filename=trycss_navbar_horizontal_black_right */
+            ul {
+              list-style-type: none;
+              margin: 0;
+              padding: 0;
+              overflow: hidden;
+              background-color: #333;
+            }
+
+            li {
+              float: left;
+            }
+
+            li a {
+              display: block;
+              color: white;
+              text-align: center;
+              padding: 14px 16px;
+              text-decoration: none;
+            }
+
+            li a:hover:not(.active) {
+              background-color: #111;
+            }
+
+            .active {
+              background-color: #04AA6D;
+            }
+        </style>
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js">
+        </script>
+        <script src="functions.js"></script>
+        <script>
+            $(document).ready(function() {
+                
+                checkUserToken(localStorage.USER_TOKEN);
+                checkAdminToken(localStorage.ADMIN_TOKEN);
+                var height = 300;
+                // Get user diary entries
+                $.ajax({
+                    type: 'GET',
+                    url: `http://ysjcs.net:5004/get_all_user_diary_entries?token=${localStorage.USER_TOKEN}&username=${localStorage.USERNAME}`,
+                    async: true,
+                    success: function(records) {
+                        if (records.length == 0) {
+                            return null;
+                        }
+                        $(records).each(function(index){                
+                            // Add memberships to select
+                            //https://stackoverflow.com/questions/10659097/jquery-get-selected-option-from-dropdown?page=1&tab=scoredesc#tab-top
+                            $('.field_wrapper').append(`
+                                <div class="diaryEntryRecordsWrapper" data-record_id="${this.ID}" style="padding-top: 50px;">
+                                    <table>
+                                        <tr>
+                                            <th>Gym Details</th>
+                                            <th>Workout Date</th>
+                                            <th>Exercise</th>
+                                            <th>Set Number</th>
+                                            <th>Weight (KG)</th>
+                                            <th>Repetitions</th>
+                                        </tr>
+                                        <tr>
+                                            <td>${this.gym_name} - ${this.gym_city} - ${this.postcode}</td>
+                                            <td>${new Date(this.workout_date).toDateString()}</td>
+                                            <td>${this.exercise}</td>
+                                            <td>${this.set_number}</td>
+                                            <td>${this.weight_lifted}</td>
+                                            <td>${this.repetitions}</td>
+                                        </tr>
+                                    </table>
+                                            <b>Enter update</b>
+                                            <input type="checkbox" class="field_wrapped updateInput toUpdate"></input>
+                                            <select class="field_wrapped updateInput classic workoutSelect" name='workoutSelect'></select>
+                                            <select class="field_wrapped updateInput classic exerciseSelect" name='exerciseSelect'></select>
+                                            <input class="field_wrapped updateInput setNumberInput" type="number" placeholder="Set Number" name='setNumberInput'/>
+                                            <input class="field_wrapped updateInput weight_lifted_kg" type="number" placeholder="Weight Lifted" name='weight_lifted_kg'/>
+                                            <input class="field_wrapped updateInput repetitions" type="number" placeholder="Repetitions" name='repetitions'/>
+                                </div>
+                            `);
+                            $(".row").attr('style', `top: ${186 + (records.length * 80)}px`);
+                        });
+                    }
+                }).done(function() {
+                    $.ajax({
+                        type: 'GET',
+                        url: `http://ysjcs.net:5004/get_exercises?token=${localStorage.USER_TOKEN}`,
+                        async: true,
+                        success: function(records) {
+                            if (records.length == 0) {
+                                return null;
+                            }
+                            $(".exerciseSelect").each(function(recordIndex) {
+                                var thisSelect = $(this);
+                                $(records).each(function(exerciseIndex) {
+                                    $(thisSelect).append(`<option value=${this.ID}>${this.exercise}</option>`);
+                                });
+                            });
+                        }
+                    }).done(function() {
+                        $.ajax({
+                            type: 'GET',
+                            url: `http://ysjcs.net:5004/get_membership_workout_dates?token=${localStorage.USER_TOKEN}&username=${localStorage.USERNAME}`,
+                            async: true,
+                            success: function(records) {
+                                if (records.length == 0) {
+                                    alert("No workouts found, please add one first")
+                                }
+                                
+                                $(".workoutSelect").each(function(recordIndex) {
+                                    var thisSelect = $(this);
+                                    $(records).each(function(workoutIndex) {
+                                        $(thisSelect).append(`<option value=${this.workout_ID}>${new Date(this.workout_date).toDateString()} - ${this.gym_name} - ${this.gym_city} - ${this.postcode}</option>`);
+                                    });
+                                });
+                            }
+                        });
+                    });
+                });
+                
+                $("#submitRecordsButton").on('click', function() {
+                    var checkBoxedRecords = [];
+                    console.log($(".toUpdate:checked").length);
+                    if ($(".toUpdate:checked").length == 0) {
+                        $(".success").hide();
+                        $(".error").show();
+                        $(".error").text("Please check a record update box to update records");
+                        return null;
+                    }
+                    
+                    
+                    $(".toUpdate:checked").each(function(index) {
+                        const wrapper = $(this).parent();
+                        const entry_ID = $(wrapper).attr("data-record_id");
+                        const exercise_ID = $(wrapper).find(".exerciseSelect :selected").val();
+                        const workout_ID = $(wrapper).find(".workoutSelect :selected").val();
+                        const set_number = $(wrapper).find(".setNumberInput").val();
+                        const weight_lifted = $(wrapper).find(".weight_lifted_kg").val();
+                        const repetitions = $(wrapper).find(".repetitions").val();
+                        console.log([exercise_ID, workout_ID, set_number, weight_lifted, repetitions]);
+                        if (isEmpty(set_number)) {
+                            $(".success").hide();
+                            $(".error").show();
+                            $(".error").text("Checked record update missing set number, please enter it and try again");
+                            return false;
+                        }
+                        
+                        if (isEmpty(weight_lifted)) {
+                            $(".success").hide();
+                            $(".error").show();
+                            $(".error").text("Checked record update missing weight lifted, please enter it and try again");
+                            return false;
+                        }
+                        
+                        if (isEmpty(repetitions)) {
+                            $(".success").hide();
+                            $(".error").show();
+                            $(".error").text("Checked record update missing repetitions, please enter it and try again");
+                            return false;
+                        }
+                        
+                        checkBoxedRecords[index] = {"ID": entry_ID, 
+                                                   "exercise_ID": exercise_ID, 
+                                                   "workout_ID": workout_ID, 
+                                                   "set_number": set_number,
+                                                   "`weight_lifted-kg`": weight_lifted,
+                                                   "repetitions": repetitions}
+                    });
+                    
+                    $.ajax({
+                        type: 'POST',
+                        url: `http://ysjcs.net:5004/update_diary_entries?token=${localStorage.USER_TOKEN}`,
+                        data: {diary_entries: JSON.stringify(checkBoxedRecords)},
+                        async: true,
+                        success: function() {
+                            $(".success").show();
+                            $(".error").hide();
+                            $(".success").text("Diary entries updated");
+                        },
+                        error: function(error) {
+                            $(".success").hide();
+                            $(".error").show();
+                            $(".error").text(error.responseText);
+                        }
+                    });
+                });
+            });
+        </script>
+    </head>
+
+    <body>
+
+        <ul id='navigation'>
+            <li><a href="account_info.html">Account</a></li>
+            <li><a href="diary_page.html">Diary</a></li>
+            
+            <li style="float:right"><a class="active" id='logoutButton'>Logout</a></li>
+        </ul>
+        <ul id='navigation'>
+          <li><a href="diary_page.html">View</a></li>
+          <li><a href="diary_page_add_workouts.html">Add</a></li>
+          <li><a href="diary_page_update_account.html">Update</a></li>
+          <li><a href="diary_page_delete_membership.html">Delete</a></li>
+        </ul>
+        <ul id='navigation'>
+            <li><a href="diary_page_update_account.html">Account</a></li>
+            <li><a href='diary_page_update_diary_entries.html'>Diary Entries</a></li>
+        </ul>
+
+        
+    <main>
+        <div class="row" id="diaryUpdate">            
+            <div class="colm-form">
+                <p class="error" id='membershipError' style="color: red"></p>
+                <p class="success" style="color: green"></p>
+                <div class="form-container" style="flex: 0 0 0 !important; max-width: none">
+                    <h1><b>Update diary entries</b></h1><br>
+                    <button class="diaryRecord btn-login" id="submitRecordsButton" title="Add field">Update record(s)</button>
+                    <div class="field_wrapper">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+    </body>
+</html>

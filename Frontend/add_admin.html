@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" type = "text/css" href="styles.css">
+    <h1 style="padding-left: 45%;"> Gym Diary </h1>
+    <!-- Taken from https://www.w3schools.com/html/tryit.asp?filename=tryhtml_table_intro -->
+    <style>
+        table {
+          font-family: arial, sans-serif;
+          border-collapse: collapse;
+          width: 100%;
+        }
+
+        td {
+          border: 1px solid #dddddd;
+          text-align: left;
+          padding: 8px;
+        }
+
+        th {
+          border: 1px solid #dddddd;
+          text-align: center;
+          padding: 8px;
+        }
+
+        tr:nth-child(even) {
+          background-color: #dddddd;
+        }
+        
+        /* Adapted from https://www.w3schools.com/css/tryit.asp?filename=trycss_navbar_horizontal_black_right */
+        ul {
+          list-style-type: none;
+          margin: 0;
+          padding: 0;
+          overflow: hidden;
+          background-color: #333;
+        }
+
+        li {
+          float: left;
+        }
+
+        li a {
+          display: block;
+          color: white;
+          text-align: center;
+          padding: 14px 16px;
+          text-decoration: none;
+        }
+
+        li a:hover:not(.active) {
+          background-color: #111;
+        }
+
+        .active {
+          background-color: #04AA6D;
+        }
+    </style>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js">
+    </script>
+    <script src="functions.js"></script>
+    <script>
+        
+        $(document).ready(function() {
+
+            // Validate admin token
+            checkAdminToken(localStorage.ADMIN_TOKEN);
+            
+            $("#addUserButton").click(function() {
+                if (isEmpty($("#usernameInput").val())) {
+                    $(".success").hide();
+                    $(".error").show();
+                    $(".error").text("Please enter a username then press the button");
+                }
+                $.ajax({
+                    type: 'POST',
+                    url: `http://ysjcs.net:5004/add_admin_account?token=${localStorage.ADMIN_TOKEN}`,
+                    async: true,
+                    data: {username : $("#usernameInput").val()},
+                    success: function() {
+                        $(".error").hide();
+                        $(".success").show();
+                        $(".success").text("Entered account is now an admin");
+                    },
+                    error: function(response) {
+                        $(".success").hide();
+                        $(".error").show();
+                        $(".error").text(response.responseText);
+                    }
+                });
+                
+            });
+            
+        
+        });
+    </script>
+</head>
+    
+    
+<body>
+    <ul id='navigation'>
+      <li><a href="account_info.html">Account</a></li>
+      <li><a href="diary_page.html">Diary</a></li>
+      
+      <li style="float:right"><a class="active" id='logoutButton'>Logout</a></li>
+    </ul>
+    <ul id='navigation'>
+      <li><a href="admin_control.html">Add Exercises</a></li>
+      <li><a href="add_admin.html">Add admin accounts</a></li>
+    </ul>
+    
+    <main>
+        <div class="row">
+            <div class="colm-form">
+                <p class="error" style="color: red"></p>
+                <p class="success" style="color: green"></p>
+                <div class="form-container" style="flex: 0 0 0 !important;">
+                    <h1>Add new admin accounts</h1><br><br>
+                    <b>Enter username</b>
+                    <input type="text" placeholder="Username" id="usernameInput">
+                    <button id="addUserButton" class='btn-login'>Make account admin</button>
+                </div>
+            </div>  
+        </div>
+    </main>
+</body>
+</html>

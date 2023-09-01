@@ -1,0 +1,222 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" type = "text/css" href="styles.css">
+    <h1 style="padding-left: 45%;"> Gym Diary </h1>
+    <!-- Taken from https://www.w3schools.com/html/tryit.asp?filename=tryhtml_table_intro -->
+    <style>
+        table {
+          font-family: arial, sans-serif;
+          border-collapse: collapse;
+          width: 100%;
+        }
+
+        td {
+          border: 1px solid #dddddd;
+          text-align: left;
+          padding: 8px;
+        }
+
+        th {
+          border: 1px solid #dddddd;
+          text-align: center;
+          padding: 8px;
+        }
+
+        tr:nth-child(even) {
+          background-color: #dddddd;
+        }
+        
+        /* Adapted from https://www.w3schools.com/css/tryit.asp?filename=trycss_navbar_horizontal_black_right */
+        ul {
+          list-style-type: none;
+          margin: 0;
+          padding: 0;
+          overflow: hidden;
+          background-color: #333;
+        }
+
+        li {
+          float: left;
+        }
+
+        li a {
+          display: block;
+          color: white;
+          text-align: center;
+          padding: 14px 16px;
+          text-decoration: none;
+        }
+
+        li a:hover:not(.active) {
+          background-color: #111;
+        }
+
+        .active {
+          background-color: #04AA6D;
+        }
+    </style>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js">
+    </script>
+    <script src="functions.js"></script>
+    <script>
+    $(document).ready(function() {
+        // Dynamic input number setup, adapted from https://www.codexworld.com/add-remove-input-fields-dynamically-using-jquery/
+        var maxRows = 20;
+        var currentRows = 0;
+        
+        // Validate user token
+        console.log('User Token: ' + localStorage.USER_TOKEN);
+        checkUserToken(localStorage.USER_TOKEN);
+        checkAdminToken(localStorage.ADMIN_TOKEN);
+        
+        // Get workouts and put them in select
+        // Get user Gym memberships
+        var exercises = 0;
+        var workouts = 0;
+        
+        // Get a list of registered exercises
+        $.ajax({
+            type: 'GET',
+            url: `http://ysjcs.net:5004/get_exercises?token=${localStorage.USER_TOKEN}`,
+            async: true,
+            success: function(records) {
+                if (records.length == 0) {
+                    return null;
+                }
+                exercises = records;
+            }
+        }).done(function() {
+            $.ajax({
+                type: 'GET',
+                url: `http://ysjcs.net:5004/get_membership_workout_dates?token=${localStorage.USER_TOKEN}&username=${localStorage.USERNAME}`,
+                async: true,
+                success: function(records) {
+                    console.log(records);
+                    console.log(records.length);
+                    if (records.length == 0) {
+                        alert("No workouts found, please add one first")
+                    }
+                    workouts = records; 
+                }
+            });
+        });
+        
+        //Once add button is clicked
+        $('.add_button').click(function() {
+            
+            //Check maximum number of input fields
+            if(currentRows < maxRows){ 
+                currentRows++;
+                // Put registered exercises in the dropdown
+                $(".row").attr('style', `top: ${150 + (currentRows * 55)}px`);
+                $('.field_wrapper').append(`<div class="diaryEntryRecordsWrapper">
+                                                <select class="field_wrapped classic" name='exercise' id="select${currentRows}">
+                                                </select>
+                                                <select class="field_wrapped classic" name='workouts' id="workoutSelect${currentRows}">
+                                                
+                                                </select>
+                                                <input class="field_wrapped" type="number" placeholder="Set Number" name='set_num' id="set_num${currentRows}"/>
+                                                <input class="field_wrapped" type="number" placeholder="Weight Lifted" name='weight_lifted_kg' id="weight_lifted${currentRows}"/>
+                                                <input class="field_wrapped" type="number" placeholder="Repetitions" name='reps' id="repetitions${currentRows}"/>
+                                                <button class="remove_button btn-login diaryRecord field_wrapped">Remove record</button>
+                                            </div>`);
+                $(exercises).each(function(index) {
+                    $(`#select${currentRows}`).append(`<option value=${exercises[index].ID}>${exercises[index].exercise}</option>`);
+                });
+                
+                $(workouts).each(function(index) {
+                    $(`#workoutSelect${currentRows}`).append(
+                        `<option value=${workouts[index].workout_ID}>
+                            ${new Date(workouts[index].workout_date).toDateString()} - ${workouts[index].gym_name} - ${workouts[index].gym_city} - ${workouts[index].postcode}
+                        </option>`)
+                });
+            }
+        });
+        
+        //Once remove button is clicked
+        $('.field_wrapper').on('click', '.remove_button', function(e){
+            e.preventDefault();
+            $(this).parent('div').remove(); //Remove field html
+            currentRows--; //Decrement field counter
+            $(".row").attr('style', `top: ${150 + (currentRows * 55)}px`);
+        });
+        
+        // Once the submit button is clicked
+        $("#submitRecordsButton").on("click", function() { 
+            
+            var records = [];
+            $(".diaryEntryRecordsWrapper").each(function(index) {
+                records[index] = {"exercise_ID" : $(`#select${index + 1}`).find(":selected").val(),
+                                  "set_number" : $(`#set_num${index + 1}`).val(),
+                                  "weight_lifted" : $(`#weight_lifted${index + 1}`).val(),
+                                  "repetitions" : $(`#repetitions${index + 1}`).val(),
+                                  "workout_ID" : $(`#workoutSelect${index + 1}`).val()
+                                 };
+            });
+            console.log(JSON.stringify(records));
+            console.log(records);
+
+            // Post diary entries to web server
+            $.ajax({
+                type: 'POST',
+                url: `http://ysjcs.net:5004/add_diary_entries?token=${localStorage.USER_TOKEN}`,
+                async: true,
+                data: {diary_entries : JSON.stringify(records)},
+                success: function() {
+                    $(".error").empty();
+                    $(".success").text("Diary entries added");
+                },
+                error: function(response) {
+                    $(".success").empty();
+                    $("#membershipError").text(response.responseText);
+                }
+            });
+        });
+        
+        function onAdminNavClick() {
+            return null;
+        }
+    
+    });
+    </script>
+</head>
+    
+    
+<body>
+    <ul id='navigation'>
+      <li><a href="account_info.html">Account</a></li>
+      <li><a href="diary_page.html">Diary</a></li>
+      
+      <li style="float:right"><a class="active" id='logoutButton'>Logout</a></li>
+    </ul>
+    
+    <ul id='navigation'>
+          <li><a href="diary_page.html">View</a></li>
+          <li><a href="diary_page_add_workouts.html">Add</a></li>
+          <li><a href="diary_page_update_account.html">Update</a></li>
+          <li><a href="diary_page_delete_workouts.html">Delete</a></li>
+    </ul>
+    <ul id='navigation'>
+          <li><a href="diary_page_add_workouts.html">Workouts</a></li>
+          <li><a href="diary_page_add_diary_entries.html">Diary Entries</a></li>
+    </ul>
+    <main>
+        <div class="row" id="diaryAdd">            
+            <div class="colm-form">
+                <p class="error" id='membershipError' style="color: red"></p>
+                <p class="success" style="color: green"></p>
+                <div class="form-container" style="flex: 0 0 0 !important; max-width: none">
+                    <b>Register a membership</b><br>
+                    <button class="add_button diaryRecord btn-login" title="Add field">Add record</button>
+                    <button class="diaryRecord btn-login" id="submitRecordsButton" title="Add field">Submit record(s)</button>
+                    <div class="field_wrapper">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+</body>
+</html>

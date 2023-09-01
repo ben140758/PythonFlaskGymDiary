@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" type = "text/css" href="styles.css">
+    <h1 style="padding-left: 45%;"> Gym Diary </h1>
+    <!-- Taken from https://www.w3schools.com/html/tryit.asp?filename=tryhtml_table_intro -->
+    <style>
+        table {
+          font-family: arial, sans-serif;
+          border-collapse: collapse;
+          width: 100%;
+        }
+
+        td {
+          border: 1px solid #dddddd;
+          text-align: left;
+          padding: 8px;
+        }
+
+        th {
+          border: 1px solid #dddddd;
+          text-align: center;
+          padding: 8px;
+        }
+
+        tr:nth-child(even) {
+          background-color: #dddddd;
+        }
+        
+        /* Adapted from https://www.w3schools.com/css/tryit.asp?filename=trycss_navbar_horizontal_black_right */
+        ul {
+          list-style-type: none;
+          margin: 0;
+          padding: 0;
+          overflow: hidden;
+          background-color: #333;
+        }
+
+        li {
+          float: left;
+        }
+
+        li a {
+          display: block;
+          color: white;
+          text-align: center;
+          padding: 14px 16px;
+          text-decoration: none;
+        }
+
+        li a:hover:not(.active) {
+          background-color: #111;
+        }
+
+        .active {
+          background-color: #04AA6D;
+        }
+    </style>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js">
+    </script>
+    <script src="functions.js"></script>
+    <script>
+    
+        // Get muscle groups from database via API
+        async function getMuscleGroups(callbackFunc) {
+            var muscle_groups = 0;
+            $.ajax({
+                method: 'GET',
+                url: `http://ysjcs.net:5004/get_muscle_groups?token=${localStorage.ADMIN_TOKEN}`,
+                contentType: 'application/json',
+                success: function(result) {
+                    callbackFunc(result);
+                },
+                error: function ajaxError(jqXHR) {
+                    console.error('Error: ', jqXHR.responseText);
+                }
+            });
+        }
+        
+        // Display obtained muscle groups via callback
+        function displayMuscleGroups(muscleGroups) {
+            console.log(muscleGroups);
+            $(muscleGroups).each(function(index) {
+                $("#muscleSelect").append(`<option value="${this.muscle_group}">${this.muscle_group}</option>`);
+            });
+        }
+        
+        function getExercises(muscleGroup, difficulty, callbackFunc, exerciseSearchName) {
+            var urlArgs = `muscle=${muscleGroup}&difficulty=${difficulty}&name=${exerciseSearchName}`;
+            if (isUndefined(exerciseSearchName) || isEmpty(exerciseSearchName)) {
+                var urlArgs = `muscle=${muscleGroup}&difficulty=${difficulty}`;
+            }
+            // Get Exercises associated with muscle and difficulty
+            // taken from https://api-ninjas.com/api/exercises JavaScript example
+            $.ajax({
+                method: 'GET',
+                url: `https://api.api-ninjas.com/v1/exercises?${urlArgs}`,
+                headers: { 'X-Api-Key': 'v5qqN3Fh6RrYLv9BuPCpxw==BCgHvgcVhxAcul0I'},
+                contentType: 'application/json',
+                success: function(result) {
+                    callbackFunc(result);
+                },
+                error: function ajaxError(jqXHR) {
+                    console.error('Error: ', jqXHR.responseText);
+                }
+            });
+        }
+        
+        function displayExercises(exercises) {
+            if (exercises.length == 0) {
+                $(".success").hide();
+                $(".error").show();
+                $('.error').text("No exercises found, try searching for something else");
+                return null;
+            }
+            $("#exerciseSelect").empty();
+            $(exercises).each(function(index) {
+                $("#exerciseSelect").append(`<option value="${this.name}">${this.name}</option>`);
+            });
+        }
+        
+        $(document).ready(function() {
+
+            // Validate admin token
+            checkAdminToken(localStorage.ADMIN_TOKEN);
+
+            getMuscleGroups(displayMuscleGroups);
+            getExercises('abdominals', 'beginner', displayExercises);
+            // Adapted from https://stackoverflow.com/questions/13152927/how-to-use-radio-on-change-event
+            $("#exerciseButton").click(function() {
+                const selectedMuscleGroup = $('#muscleSelect').find(":selected").text();
+                const difficulty = $('input[name="difficulty"]:checked').val();
+                const exerciseSearchValue = $('#exerciseSearchInput').val();
+                getExercises(selectedMuscleGroup, difficulty, displayExercises, exerciseSearchValue);
+            });
+            
+            $("#addExerciseButton").click(function() {
+                console.log("went here");
+                var selectedExercises = [];
+                $("#exerciseSelect > option:selected").each(function(index) {
+                    selectedExercises[index] = {"exercise": $(this).val() };
+                });
+                if (selectedExercises.length == 0) {
+                    $(".success").hide();
+                    $(".error").show();
+                    $('.error').text("No exercises selected, please select one and try again");
+                    return null;
+                }
+                $.ajax({
+                    type: 'POST',
+                    url: `http://ysjcs.net:5004/add_exercises?token=${localStorage.ADMIN_TOKEN}`,
+                    async: true,
+                    data: {exercises : JSON.stringify(selectedExercises)},
+                    success: function() {
+                        $(".error").hide();
+                        $(".success").show();
+                        console.log("GOT HEREEEEE");
+                        $(".success").text("Exercises added");
+                    },
+                    error: function(response) {
+                        $(".success").hide();
+                        $(".error").show();
+                        $(".error").text(response.responseText);
+                    }
+                });
+                
+            });
+            
+        
+        });
+    </script>
+</head>
+    
+    
+<body>
+    <ul id='navigation'>
+      <li><a href="account_info.html">Account</a></li>
+      <li><a href="diary_page.html">Diary</a></li>
+      
+      <li style="float:right"><a class="active" id='logoutButton'>Logout</a></li>
+    </ul>
+    <ul id='navigation'>
+      <li><a href="admin_control.html">Add Exercises</a></li>
+      <li><a href="add_admin.html">Add admin accounts</a></li>
+    </ul>
+    <main>
+        <div class="row" style="top:460px;">
+            <div class="colm-form">
+                <p class="error" style="color: red"></p>
+                <p class="success" style="color: green"></p>
+                <div class="form-container" style="flex: 0 0 0 !important;">
+                    <h1>Add new exercises</h1><br><br>
+                    <b>Search for Exercise (optional)</b>
+                    <input type="text" placeholder="exercise name" id="exerciseSearchInput">
+                    <b>Muscle / Muscle Group</b><br>
+                    <select class="classic" id="muscleSelect"></select><br><br>
+                    <b>Difficulty level</b><br>
+                    beginner<input class=".difficultyRadio" type="radio" name="difficulty" value="beginner" checked>
+                    intermediate<input class=".difficultyRadio" type="radio" name="difficulty" value="intermediate">
+                    expert<input class=".difficultyRadio" type="radio" name="difficulty" value="expert"><br><br>
+                    <button id="exerciseButton" class="btn-login">Search Exercises</button>
+                    <b>Exercises</b><br>
+                    <select id="exerciseSelect" style="height: 220px; width: 95%; overflow-x: scroll" multiple></select>
+                    <button id="addExerciseButton" class='btn-login'>Add selected exercises</button>
+                </div>
+            </div>
+            
+        </div>
+    </main>
+</body>
+</html>

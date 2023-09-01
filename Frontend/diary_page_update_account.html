@@ -1,0 +1,164 @@
+<html>
+    <head>
+        <meta charset="UTF-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link rel="stylesheet" type = "text/css" href="styles.css">
+        <h1 style="padding-left: 45%;"> Gym Diary </h1>
+        <!-- Taken from https://www.w3schools.com/html/tryit.asp?filename=tryhtml_table_intro -->
+        <style>
+            table {
+              font-family: arial, sans-serif;
+              border-collapse: collapse;
+              width: 100%;
+            }
+
+            td {
+              border: 1px solid #dddddd;
+              text-align: left;
+              padding: 8px;
+            }
+
+            th {
+              border: 1px solid #dddddd;
+              text-align: center;
+              padding: 8px;
+            }
+
+            tr:nth-child(even) {
+              background-color: #dddddd;
+            }
+
+            /* Adapted from https://www.w3schools.com/css/tryit.asp?filename=trycss_navbar_horizontal_black_right */
+            ul {
+              list-style-type: none;
+              margin: 0;
+              padding: 0;
+              overflow: hidden;
+              background-color: #333;
+            }
+
+            li {
+              float: left;
+            }
+
+            li a {
+              display: block;
+              color: white;
+              text-align: center;
+              padding: 14px 16px;
+              text-decoration: none;
+            }
+
+            li a:hover:not(.active) {
+              background-color: #111;
+            }
+
+            .active {
+              background-color: #04AA6D;
+            }
+        </style>
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js">
+        </script>
+        <script src="functions.js"></script>
+        <script>
+            $(document).ready(function() {
+                
+                checkUserToken(localStorage.USER_TOKEN);
+                checkAdminToken(localStorage.ADMIN_TOKEN);
+                var userRecord = 0;
+                $.ajax({
+                    type:'GET',
+                    url: `http://ysjcs.net:5004/get_user?token=${localStorage.USER_TOKEN}&username=${localStorage.USERNAME}`,
+                    success: function(response) {
+						$(".error").hide();
+						console.log(response);
+                        userRecord = response;
+                        $("#usernameInput").attr("placeholder", response.username);
+                        $("#forenameInput").attr("placeholder", response.forename);
+                        $("#surnameInput").attr("placeholder", response.surname);
+					},
+					error: function(error) {
+						$(".error").text(error.responseText);
+						$(".success").hide();
+					}
+                })
+                
+                $("#updateSubmit").on('click', function() {
+                    var newUsername = $("#usernameInput").val();
+                    var newForename = $("#forenameInput").val();
+                    var newSurname = $("#surnameInput").val();
+                    console.log(newUsername);
+
+                    if (isEmpty(newUsername)) {
+                        newUsername = localStorage.USERNAME;
+                    }
+                    if (isEmpty(newForename)) {
+                        console.log("Got here");
+                        newForename = userRecord.forename;
+                    }
+                    if (isEmpty(newSurname)) {
+                        newSurname = userRecord.surname;
+                    }
+                    $.ajax({
+                        type: 'POST',
+                        url: `http://ysjcs.net:5004/update_account_information?token=${localStorage.USER_TOKEN}`,
+                        data: {
+                            user_ID: userRecord.ID,
+                            username: localStorage.USERNAME,
+                            new_username: newUsername,
+                            forename: newForename,
+                            surname: newSurname
+                        },
+                        success: function(response) {
+                            $(".error").hide();
+                            $(".success").show();
+                            $(".success").text(response);
+                            localStorage.USERNAME = newUsername;
+                        },
+                        error: function(error) {
+                            $(".success").hide();
+                            $(".error").show();
+                            $(".error").text(error.responseText);
+                        }
+                    });
+                });
+            });
+        </script>
+    </head>
+
+    <body>
+
+        <ul id='navigation'>
+            <li><a href="account_info.html">Account</a></li>
+            <li><a href="diary_page.html">Diary</a></li>
+            
+            <li style="float:right"><a class="active" id='logoutButton'>Logout</a></li>
+        </ul>
+        <ul id='navigation'>
+          <li><a href="diary_page.html">View</a></li>
+          <li><a href="diary_page_add_workouts.html">Add</a></li>
+          <li><a href="diary_page_update_account.html">Update</a></li>
+          <li><a href="diary_page_delete_membership.html">Delete</a></li>
+        </ul>
+        <ul id='navigation'>
+            <li><a href="diary_page_update_account.html">Account</a></li>
+            <li><a href='diary_page_update_diary_entries.html'>Diary Entries</a></li>
+        </ul>
+
+        
+        <div class="row" style="top: 50vh !important;">
+		<div class="colm-form" id="diaryEntrySelector">
+			<p class="error" style="color: red"></p>
+			<p class="success" style="color: green"></p>
+			<div class="form-container" id="diary1" style="flex: 0 0 0 !important;">
+				<h2>Update Account information</h2>
+				<input type="text" placeholder="Username", id='usernameInput'>
+                <input type="text" placeholder="Forename" id='forenameInput'>
+                <input type="text" placeholder="Surname" id='surnameInput'>
+				<button type=submit id='updateSubmit' class='btn-login'>Update Account</button>
+			</div>
+		</div>
+    </div>
+    </body>
+</html>

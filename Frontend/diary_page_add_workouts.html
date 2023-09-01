@@ -1,0 +1,171 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" type = "text/css" href="styles.css">
+    <h1 style="padding-left: 45%;"> Gym Diary </h1>
+    <!-- Taken from https://www.w3schools.com/html/tryit.asp?filename=tryhtml_table_intro -->
+    <style>
+        table {
+          font-family: arial, sans-serif;
+          border-collapse: collapse;
+          width: 100%;
+        }
+
+        td {
+          border: 1px solid #dddddd;
+          text-align: left;
+          padding: 8px;
+        }
+
+        th {
+          border: 1px solid #dddddd;
+          text-align: center;
+          padding: 8px;
+        }
+
+        tr:nth-child(even) {
+          background-color: #dddddd;
+        }
+        
+        /* Adapted from https://www.w3schools.com/css/tryit.asp?filename=trycss_navbar_horizontal_black_right */
+        ul {
+          list-style-type: none;
+          margin: 0;
+          padding: 0;
+          overflow: hidden;
+          background-color: #333;
+        }
+
+        li {
+          float: left;
+        }
+
+        li a {
+          display: block;
+          color: white;
+          text-align: center;
+          padding: 14px 16px;
+          text-decoration: none;
+        }
+
+        li a:hover:not(.active) {
+          background-color: #111;
+        }
+
+        .active {
+          background-color: #04AA6D;
+        }
+    </style>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js">
+    </script>
+    <script src="functions.js"></script>
+    <script>
+        $(document).ready(function() {
+
+            // Validate user token
+            checkUserToken(localStorage.USER_TOKEN);
+            checkAdminToken(localStorage.ADMIN_TOKEN);
+
+            function onAdminNavClick() {
+                return null;
+            }
+            // Get user Gym memberships
+            $.ajax({
+                type: 'GET',
+                url: `http://ysjcs.net:5004/get_memberships?token=${localStorage.USER_TOKEN}&username=${localStorage.USERNAME}`,
+                async: true,
+                success: function(records) {
+                    $(".row").attr('style', 'top: 45vh');
+                    if (records.length == 0) {
+                        $("#membership").append(`<option>No Memberships found, please register a membership</option>`);
+                        return null;
+                    }
+                    console.log("goin here");
+                    $(records).each(function(index){                
+                        // Add memberships to select
+                        //https://stackoverflow.com/questions/10659097/jquery-get-selected-option-from-dropdown?page=1&tab=scoredesc#tab-top
+                        //console.log(records[index].postcode);
+                        $("#membership").append(`<option value="${records[index].postcode}">${records[index].gym_name} - ${records[index].gym_city} - ${records[index].postcode} </option>`);
+                    });
+                }
+            });
+            
+            // Prevent date selection beyond today
+            var now = new Date();
+            var maxDate = now.toISOString().substring(0, 10);
+            $('#workoutDate').attr('max', maxDate);
+            
+            // Register a workout
+            $('#registerWorkout-btn').on('click', function() {
+                var timestamp = Date.parse($('#workoutDate').val());
+                var chosenDate = new Date(timestamp).toISOString();
+                // Post membership to database
+                // Prevent page reload on return
+                event.preventDefault();
+
+                // Check if input is empty
+                if (isEmpty($('#workoutDate').val())) {
+                    $(".error").text("Please enter a gym postcode to register with.");
+                    return null;
+                } else {
+                    $(".error").text("");
+                }
+
+                var request = $.ajax({
+                    type: 'POST',
+                    url: `http://ysjcs.net:5004/add_workout?token=${localStorage.USER_TOKEN}`,
+                    async: true,
+                    data: {membership: $('#membership').find(":selected").val(), 
+                           username: localStorage.USERNAME,
+                           workout_date: chosenDate},
+                    success: function() {
+                        $(".error").empty();
+                        $(".success").text("Registration Successful");
+                    },
+                    error: function(response) {
+                        $(".success").empty();
+                        $(".error").text(response.responseText);
+                    }
+                });  
+            });
+        });
+    </script>
+</head>
+
+<body>
+    <ul id='navigation'>
+      <li><a href="account_info.html">Account</a></li>
+      <li><a href="diary_page.html">Diary</a></li>
+      
+      <li style="float:right"><a class="active" id='logoutButton'>Logout</a></li>
+    </ul>
+    <ul id='navigation'>
+          <li><a href="diary_page.html">View</a></li>
+          <li><a href="diary_page_add_workouts.html">Add</a></li>
+          <li><a href="diary_page_update_account.html">Update</a></li>
+          <li><a href="diary_page_delete_membership.html">Delete</a></li>
+    </ul>
+    <ul id='navigation'>
+          <li><a href="diary_page_add_workouts.html">Workouts</a></li>
+          <li><a href='diary_page_add_diary_entries.html'>Diary Entries</a></li>
+    </ul>
+    
+    <div class="row" style="top: 50vh !important;">
+            <div class="colm-form" id="diaryEntrySelector">
+                <p class="error" id="errorOne" style="color: red"></p>
+                <p class="success" style="color: green"></p>
+                <div class="form-container" id="diary1" style="flex: 0 0 0 !important;">
+                    <h2>Register a workout</h2>
+                    <select class="classic" id='membership'>
+                    </select>
+                    <br>
+                    <input type=date id='workoutDate' placeholder="Workout Date">
+                    <button type="submit" class="btn-login" id='registerWorkout-btn'>Register Workout</button>
+                </div>
+            </div>
+    </div>
+
+</body>
+</html>
